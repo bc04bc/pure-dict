@@ -46,3 +46,14 @@ List<(String, String)> parseExchange(String raw) {
       })
       .toList();
 }
+
+/// Normalizes ECDICT text that may contain either real newlines or the
+/// literal `\n` escape sequence into a list of trimmed non-empty lines.
+List<String> splitEscapedLines(String raw) {
+  return raw
+      .replaceAll(r'\n', '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList();
+}

@@ -7,6 +7,7 @@ import '../../core/models/word_entry.dart';
 import '../../core/network/online_dict.dart';
 import '../../core/text/translation_parse.dart';
 import '../../core/tts/tts_service.dart';
+import '../settings/settings_page.dart' show DefMode, defModeProvider;
 
 class WordDetailPage extends ConsumerStatefulWidget {
   const WordDetailPage({super.key, required this.word});
@@ -257,15 +258,7 @@ class _EntryView extends ConsumerWidget {
           ..._buildPosGroups(entry.translation!),
         if (entry.definition != null && entry.definition!.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _SectionCard(
-            title: '英英释义',
-            children: [
-              Text(
-                entry.definition!,
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
-              ),
-            ],
-          ),
+          _DefinitionSection(entry: entry),
         ],
         if (entry.exchange != null && entry.exchange!.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -296,6 +289,93 @@ class _EntryView extends ConsumerWidget {
         const SizedBox(height: 16),
         _OnlineSection(word: entry.word),
       ],
+    );
+  }
+}
+
+/// Renders the WordNet definition as bilingual / Chinese-only /
+/// English-only depending on the user's display preference.
+class _DefinitionSection extends ConsumerWidget {
+  const _DefinitionSection({required this.entry});
+
+  final WordEntry entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final mode = ref.watch(defModeProvider);
+
+    final enLines = splitEscapedLines(entry.definition!);
+    final cnLines = entry.definitionCn == null
+        ? <String>[]
+        : splitEscapedLines(entry.definitionCn!);
+
+    if (mode == DefMode.en || cnLines.isEmpty) {
+      return _SectionCard(
+        title: '英英释义',
+        children: [
+          for (final line in enLines)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Text(
+                line,
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+              ),
+            ),
+        ],
+      );
+    }
+
+    if (mode == DefMode.cn) {
+      return _SectionCard(
+        title: '中文释义',
+        children: [
+          for (final line in cnLines)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Text(
+                line,
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+              ),
+            ),
+        ],
+      );
+    }
+
+    // bilingual: pair up English and Chinese lines
+    final rows = <Widget>[];
+    for (var i = 0; i < enLines.length; i++) {
+      final cn = i < cnLines.length ? cnLines[i] : null;
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                enLines[i],
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+              ),
+              if (cn != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  cn,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return _SectionCard(
+      title: '英英释义',
+      children: rows,
     );
   }
 }
@@ -379,7 +459,6 @@ class _OnlineSection extends ConsumerWidget {
 }
 
 class _SectionCard extends StatelessWidget {  const _SectionCard({this.title, required this.children});
-
   final String? title;
   final List<Widget> children;
 

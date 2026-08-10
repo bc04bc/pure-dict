@@ -74,7 +74,7 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              'v1.0.1',
+              'v1.0.3',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),
@@ -82,7 +82,8 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: Text(
-              '现代英汉 / 汉英离线词典',
+              '现代英汉 / 汉英离线词典\n英英释义由 AI 翻译为中文（双解对照）',
+              textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),

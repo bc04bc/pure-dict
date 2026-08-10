@@ -13,9 +13,24 @@ const quickLookupChannel = MethodChannel('com.example.dict/quick_lookup');
 
 enum ThemeModePref { system, light, dark }
 
+/// How the English definition section renders on the word detail page.
+enum DefMode {
+  bilingual('双解对照', '英文释义与中文翻译并排显示'),
+  cn('仅中文', '只显示中文翻译'),
+  en('仅英文', '只显示英文原义');
+
+  const DefMode(this.label, this.description);
+
+  final String label;
+  final String description;
+}
+
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeModePref>(
   (_) => ThemeModeNotifier(),
 );
+
+final defModeProvider =
+    StateNotifierProvider<DefModeNotifier, DefMode>((_) => DefModeNotifier());
 
 final themeColorProvider =
     StateNotifierProvider<ThemeColorNotifier, AppThemeColor>(
@@ -57,6 +72,27 @@ class ThemeColorNotifier extends StateNotifier<AppThemeColor> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, value.name);
     state = value;
+  }
+}
+
+class DefModeNotifier extends StateNotifier<DefMode> {
+  static const _key = 'def_mode';
+
+  DefModeNotifier() : super(DefMode.bilingual);
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_key);
+    state = DefMode.values.firstWhere(
+      (m) => m.name == saved,
+      orElse: () => DefMode.bilingual,
+    );
+  }
+
+  Future<void> set(DefMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, mode.name);
+    state = mode;
   }
 }
 
@@ -242,6 +278,43 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          _SectionLabel('释义'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.translate_outlined),
+                  title: const Text('英英释义显示'),
+                  subtitle: Text(
+                    ref.watch(defModeProvider).description,
+                  ),
+                ),
+                const Divider(height: 1),
+                RadioGroup<DefMode>(
+                  groupValue: ref.watch(defModeProvider),
+                  onChanged: (value) {
+                    if (value != null) {
+                      ref.read(defModeProvider.notifier).set(value);
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      for (final mode in DefMode.values)
+                        RadioListTile<DefMode>(
+                          title: Text(mode.label),
+                          subtitle: Text(
+                            mode.description,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          value: mode,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionLabel('快捷查词'),
           Card(
             child: Column(
@@ -346,7 +419,7 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: 32),
           Center(
             child: Text(
-              '词典 v1.0.1\n数据来源：ECDICT 开源词库',
+              '词典 v1.0.3\n数据来源：ECDICT 开源词库',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),

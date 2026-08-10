@@ -12,6 +12,7 @@ Default mode keeps a curated subset for mobile:
 
 import csv
 import re
+import shutil
 import sqlite3
 import sys
 
@@ -121,6 +122,14 @@ def main() -> None:
     conn.commit()
     conn.execute('VACUUM')
     conn.close()
+
+    # Also produce the gzip bundle shipped in the repository (the raw SQLite
+    # file exceeds GitHub's 100 MB per-file limit).
+    import gzip
+    with open(db_path, 'rb') as f_in, gzip.open(
+        db_path + '.gz', 'wb', compresslevel=9
+    ) as f_out:
+        shutil.copyfileobj(f_in, f_out)
 
     print(f'rows: total={total} kept={kept}')
 

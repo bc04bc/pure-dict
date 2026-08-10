@@ -8,7 +8,10 @@ import 'package:sqflite/sqflite.dart';
 class AppDatabase {
   AppDatabase._();
 
-  static const _assetPath = 'assets/dict.sqlite';
+  /// The dictionary ships gzip-compressed (assets/dict.sqlite.gz) to keep the
+  /// repository under GitHub's 100 MB per-file limit. On first launch the
+  /// bundle is decompressed into the app support directory.
+  static const _assetGzPath = 'assets/dict.sqlite.gz';
   static Database? _db;
 
   static Future<Database> get instance async {
@@ -17,11 +20,13 @@ class AppDatabase {
     final target = p.join(dir.path, 'dict.sqlite');
 
     if (!File(target).existsSync()) {
-      final data = await rootBundle.load(_assetPath);
-      await File(target).writeAsBytes(
-        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-        flush: true,
+      final gz = await rootBundle.load(_assetGzPath);
+      final compressed = gz.buffer.asUint8List(
+        gz.offsetInBytes,
+        gz.lengthInBytes,
       );
+      final decompressed = gzip.decode(compressed);
+      await File(target).writeAsBytes(decompressed, flush: true);
     }
     _db = await openDatabase(target, readOnly: true);
     return _db!;

@@ -25,6 +25,7 @@ class _DictAppState extends ConsumerState<DictApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(themeModeProvider.notifier).init();
       ref.read(themeColorProvider.notifier).init();
+      ref.read(defModeProvider.notifier).init();
       ref.read(ttsModeProvider.notifier).init();
       ref.read(quickLookupProvider.notifier).init();
     });

@@ -50,6 +50,9 @@ app.*.map.json
 /tools/*.sqlite
 /tools/ecdict*.csv
 /tools/*.7z
+/tools/*.tsv
+/tools/definition_cn.tsv
+/tools/translate_failed.txt
 
 
 # Local opencode config (contains machine-specific paths)

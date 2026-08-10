@@ -25,8 +25,13 @@
 ## 构建
 
 ```bash
-# 1. 准备离线词库（需要 Python 3 + ECDICT 的 ecdict.csv）
-#    从 https://github.com/skywind3000/ECDICT 下载 ecdict.csv 后：
+# 1. 准备离线词库
+#    仓库自带 gzip 压缩词库 assets/dict.sqlite.gz（含 17 万词条 + AI 中文释义），
+#    构建 APK 前先解压：
+python -c "import gzip,shutil; shutil.copyfileobj(gzip.open('assets/dict.sqlite.gz','rb'), open('assets/dict.sqlite','wb'))"
+
+#    或者从 ECDICT 源码重新构建（需要 Python 3 + ecdict.csv）：
+#    https://github.com/skywind3000/ECDICT
 python tools/build_dict.py /path/to/ecdict.csv assets/dict.sqlite
 
 # 2. 构建 APK
@@ -34,7 +39,7 @@ flutter pub get
 flutter build apk --release
 ```
 
-APK 输出在 `build/app/outputs/flutter-apk/app-release.apk`。
+APK 输出在 `build/app/outputs/flutter-apk/app-release.apk`。首次启动应用会自动解压词库（约 100MB 空间）。
 
 ## 项目结构
 

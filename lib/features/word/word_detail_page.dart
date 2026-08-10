@@ -158,7 +158,7 @@ class _RelatedList extends ConsumerWidget {
               subtitle: entry.translation != null &&
                       entry.translation!.isNotEmpty
                   ? Text(
-                      entry.translation!.split('\n').first,
+                      _firstSense(entry.translation!),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     )
@@ -254,13 +254,7 @@ class _EntryView extends ConsumerWidget {
         ],
         const SizedBox(height: 20),
         if (entry.translation != null && entry.translation!.isNotEmpty)
-          _SectionCard(
-            children: parseTranslation(entry.translation!)
-                .map(
-                  (item) => _TranslationRow(pos: item.$1, text: item.$2),
-                )
-                .toList(),
-          ),
+          ..._buildPosGroups(entry.translation!),
         if (entry.definition != null && entry.definition!.isNotEmpty) ...[
           const SizedBox(height: 16),
           _SectionCard(
@@ -340,13 +334,11 @@ class _OnlineSection extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             if (data.senses.isNotEmpty)
-              _SectionCard(
-                title: '网络释义',
-                children: data.senses
-                    .expand((sense) => sense.definitions
-                        .map((d) => _TranslationRow(pos: sense.pos, text: d)))
-                    .toList(),
-              ),
+              for (final sense in data.senses) ...[
+                if (data.senses.indexOf(sense) > 0)
+                  const SizedBox(height: 12),
+                _PosGroup(pos: sense.pos, senses: sense.definitions),
+              ],
             if (data.examples.isNotEmpty) ...[
               const SizedBox(height: 16),
               _SectionCard(
@@ -418,52 +410,139 @@ class _SectionCard extends StatelessWidget {  const _SectionCard({this.title, re
   }
 }
 
-class _TranslationRow extends StatelessWidget {
-  const _TranslationRow({required this.pos, required this.text});
+/// Groups parsed (pos, text) translations into per-pos cards.
+List<Widget> _buildPosGroups(String raw) {
+  final items = parseTranslation(raw);
+  if (items.isEmpty) return const [];
+
+  final groups = <(String, List<String>)>[];
+  for (final item in items) {
+    if (groups.isNotEmpty && groups.last.$1 == item.$1) {
+      groups.last.$2.add(item.$2);
+    } else {
+      groups.add((item.$1, [item.$2]));
+    }
+  }
+
+  return [
+    for (final group in groups) ...[
+      if (groups.indexOf(group) > 0) const SizedBox(height: 12),
+      _PosGroup(pos: group.$1, senses: group.$2),
+    ],
+  ];
+}
+
+class _PosGroup extends StatelessWidget {
+  const _PosGroup({required this.pos, required this.senses});
 
   final String pos;
-  final String text;
+  final List<String> senses;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isPos = pos.isNotEmpty && pos != '[网络]';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isPos)
-            Padding(
-              padding: const EdgeInsets.only(top: 2, right: 10),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  pos,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
+    final isRealPos = pos.isNotEmpty && pos != '[网络]';
+
+    final badgeColor = isRealPos
+        ? _posColor(pos, scheme)
+        : scheme.surfaceContainerHighest;
+    final badgeFg = isRealPos
+        ? scheme.onPrimaryContainer
+        : scheme.onSurfaceVariant;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isRealPos) ...[
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      pos,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: badgeFg,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      height: 1.2,
+                      color: badgeColor.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+            for (var i = 0; i < senses.length; i++)
+              Padding(
+                padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      margin: const EdgeInsets.only(top: 2, right: 10),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.45),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${i + 1}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: badgeFg,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        senses[i],
+                        style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            )
-          else
-            const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  static Color _posColor(String pos, ColorScheme scheme) {
+    final p = pos.toLowerCase();
+    if (p.startsWith('n')) return scheme.tertiaryContainer;
+    if (p.startsWith('v')) return scheme.primaryContainer;
+    if (p.startsWith('adj') || p.startsWith('a.')) {
+      return scheme.secondaryContainer;
+    }
+    if (p.startsWith('adv') || p.startsWith('ad.')) {
+      return scheme.surfaceContainerHighest;
+    }
+    if (p.startsWith('prep')) return scheme.errorContainer;
+    if (p.startsWith('conj')) return scheme.primaryContainer;
+    if (p.startsWith('pron')) return scheme.secondaryContainer;
+    if (p.startsWith('interj') || p.startsWith('int.')) {
+      return scheme.tertiaryContainer;
+    }
+    return scheme.surfaceContainerHighest;
   }
 }
 
@@ -507,5 +586,11 @@ class _SpeakButton extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Returns the first parsed sense (e.g. "男人, 人类, 人") for list previews.
+String _firstSense(String raw) {
+  final items = parseTranslation(raw);
+  return items.isEmpty ? raw.replaceAll(r'\n', '\n') : items.first.$2;
 }
 

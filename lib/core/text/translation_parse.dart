@@ -1,7 +1,11 @@
 /// Parses ECDICT `translation` text (newline-separated "pos. senses" lines)
 /// into (partOfSpeech, text) pairs.
+///
+/// Tolerates both real newlines and the literal `\n` escape sequence that
+/// ECDICT stores in its CSV.
 List<(String, String)> parseTranslation(String raw) {
   return raw
+      .replaceAll(r'\n', '\n')
       .split('\n')
       .map((line) => line.trim())
       .where((line) => line.isNotEmpty)
@@ -9,7 +13,7 @@ List<(String, String)> parseTranslation(String raw) {
         final m = RegExp(r'^([a-z]{1,4}\.)\s*(.*)$').firstMatch(line);
         if (m != null) return (m.group(1)!, m.group(2)!.trim());
         final n = RegExp(r'^\[([^\]]+)\]\s*(.*)$').firstMatch(line);
-        if (n != null) return (n.group(1)!, n.group(2)!.trim());
+        if (n != null) return ('[${n.group(1)}]', n.group(2)!.trim());
         return ('', line);
       })
       .toList();

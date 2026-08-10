@@ -1,7 +1,7 @@
 name: dict
 description: "现代英汉/汉英离线词典：离线词库、多源发音、Material You 主题、通知栏查词"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.12.2

@@ -78,7 +78,7 @@ def main() -> None:
                 continue
             total += 1
             word = row[0]
-            translation = row[3]
+            translation = row[3].replace('\\n', '\n')
             definition = row[2]
             tag = row[6]
             bnc = int(row[8]) if row[8] else 0

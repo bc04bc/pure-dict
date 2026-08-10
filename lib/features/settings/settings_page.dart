@@ -346,7 +346,7 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: 32),
           Center(
             child: Text(
-              '词典 v1.0.0\n数据来源：ECDICT 开源词库',
+              '词典 v1.0.1\n数据来源：ECDICT 开源词库',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),

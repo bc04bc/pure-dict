@@ -388,7 +388,7 @@ class SettingsPage extends ConsumerWidget {
                   subtitle: const Text('重新从安装包解压词库文件'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
-                    await AppDatabase.reset();
+                    await AppDatabase.rebuild();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context)
                         ..hideCurrentSnackBar()

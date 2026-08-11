@@ -5,6 +5,7 @@ import '../../core/db/dict_repository.dart';
 import '../../core/db/user_data.dart';
 import '../../core/models/word_entry.dart';
 import '../../core/network/online_dict.dart';
+import '../../core/text/importance.dart';
 import '../../core/text/translation_parse.dart';
 import '../../core/tts/tts_service.dart';
 import '../settings/settings_page.dart' show DefMode, defModeProvider;
@@ -253,6 +254,8 @@ class _EntryView extends ConsumerWidget {
             ],
           ),
         ],
+        const SizedBox(height: 12),
+        _ImportanceBadges(entry: entry),
         const SizedBox(height: 20),
         if (entry.translation != null && entry.translation!.isNotEmpty)
           ..._buildPosGroups(entry.translation!),
@@ -290,6 +293,91 @@ class _EntryView extends ConsumerWidget {
         _OnlineSection(word: entry.word),
       ],
     );
+  }
+}
+
+/// Shows the word's importance: a "common word" badge (ECDICT tag) plus a
+/// frequency-level badge derived from the contemporary corpus rank.
+class _ImportanceBadges extends StatelessWidget {
+  const _ImportanceBadges({required this.entry});
+
+  final WordEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final importance = importanceFromFrq(entry.frq);
+
+    final chips = <Widget>[];
+    if (entry.tag == '1') {
+      chips.add(_Badge(
+        icon: Icons.star_rounded,
+        text: '常用词',
+        background: scheme.primaryContainer,
+        foreground: scheme.onPrimaryContainer,
+      ));
+    }
+    if (importance != WordImportance.unknown) {
+      chips.add(_Badge(
+        icon: Icons.trending_up_rounded,
+        text: importance.label,
+        tooltip: importance.description,
+        background: scheme.secondaryContainer,
+        foreground: scheme.onSecondaryContainer,
+      ));
+    }
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: chips,
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({
+    required this.icon,
+    required this.text,
+    required this.background,
+    required this.foreground,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final String text;
+  final Color background;
+  final Color foreground;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: foreground),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ],
+    );
+    final child = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: label,
+    );
+    if (tooltip == null) return child;
+    return Tooltip(message: tooltip!, child: child);
   }
 }
 

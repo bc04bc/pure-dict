@@ -33,6 +33,15 @@ void main() {
       expect(w.phonetic, isNotEmpty);
     });
 
+    test('definition_cn present on lookup', () async {
+      final w = await repo.lookup('apple');
+      expect(w, isNotNull);
+      final entry = w!;
+      expect(entry.definition, isNotNull);
+      expect(entry.definitionCn, isNotNull);
+      expect(entry.definitionCn, isNotEmpty);
+    });
+
     test('exact lookup miss', () async {
       expect(await repo.lookup('zzzznotaword'), isNull);
     });

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
+
+  static const _repoUrl = 'https://github.com/bc04bc/pure-dict';
 
   static const _licenses = [
     ('ECDICT 词库', 'MIT License', 'skywind3000',
@@ -88,7 +91,32 @@ class AboutPage extends StatelessWidget {
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          Card(
+            child: ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              leading: CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                child: Icon(
+                  Icons.code_rounded,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+              title: const Text(
+                'GitHub 仓库',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text('pure-dict · 开源项目主页'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () => launchUrl(
+                Uri.parse(_repoUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           Text(
             '引用项目',
             style: theme.textTheme.titleMedium

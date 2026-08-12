@@ -46,8 +46,7 @@ app.*.map.json
 
 # Dictionary build artifacts
 /assets/dict.sqlite
-/release/*
-!/release/*.apk
+/release/
 /tools/*.sqlite
 /tools/ecdict*.csv
 /tools/*.7z

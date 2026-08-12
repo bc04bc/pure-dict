@@ -15,7 +15,7 @@ class AppDatabase {
   /// Bump this whenever the bundled schema/data changes (e.g. new columns),
   /// so installed apps re-extract the newer dictionary instead of reusing a
   /// stale local copy.
-  static const _dictVersion = 3;
+  static const _dictVersion = 4;
   static const _assetGzPath = 'assets/dict.sqlite.gz';
   static Database? _db;
 

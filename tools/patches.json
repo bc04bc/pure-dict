@@ -1,0 +1,284 @@
+{
+  "anime": {
+    "translation": "n. 动漫，动画（尤指日本动画片）"
+  },
+  "meme": {
+    "translation": "n. 梗，表情包（在网络上迅速传播的图片、文字或视频）"
+  },
+  "streamer": {
+    "translation": "n. 主播，网络主播"
+  },
+  "influencer": {
+    "translation": "n. 网红，网络影响者"
+  },
+  "browser": {
+    "translation": "n. 浏览器"
+  },
+  "laptop": {
+    "translation": "n. 笔记本电脑，便携式电脑"
+  },
+  "tablet": {
+    "translation": "n. 平板电脑"
+  },
+  "download": {
+    "translation": "vt. 下载（把文件从互联网传输到本地设备）"
+  },
+  "upload": {
+    "translation": "vt. 上传"
+  },
+  "avatar": {
+    "translation": "n. 头像；虚拟形象（游戏、社交平台中的角色）"
+  },
+  "startup": {
+    "translation": "n. 初创公司，新兴企业"
+  },
+  "freelancer": {
+    "translation": "n. 自由职业者"
+  },
+  "streaming": {
+    "translation": "n. 流媒体播放，流式传输"
+  },
+  "smoothie": {
+    "translation": "n. 果昔，奶昔（水果与牛奶或果汁搅拌而成的饮料）"
+  },
+  "skincare": {
+    "translation": "n. 护肤，皮肤护理"
+  },
+  "sunscreen": {
+    "translation": "n. 防晒霜，防晒乳"
+  },
+  "hoodie": {
+    "translation": "n. 连帽衫"
+  },
+  "sneaker": {
+    "translation": "n. 运动鞋，球鞋"
+  },
+  "leggings": {
+    "translation": "n. 紧身裤，打底裤"
+  },
+  "joggers": {
+    "translation": "n. 运动裤，慢跑裤"
+  },
+  "clutch": {
+    "translation": "n. 手拿包（无提手的女式小包）"
+  },
+  "accessory": {
+    "translation": "n. 配饰（包、鞋、首饰等）"
+  },
+  "outfit": {
+    "translation": "n. 全套服装，装束"
+  },
+  "burnout": {
+    "translation": "n. 精疲力竭，过度劳累（尤指工作压力导致的倦怠）"
+  },
+  "trauma": {
+    "translation": "n. 心理创伤，精神创伤"
+  },
+  "toxic": {
+    "translation": "a. 有毒害的，恶劣的（指人际关系、工作环境等）"
+  },
+  "gaslight": {
+    "translation": "vt. 精神操控，煤气灯操纵（使人逐渐怀疑自己的记忆和判断）"
+  },
+  "booster": {
+    "translation": "n. 加强针，疫苗追加剂"
+  },
+  "sanitizer": {
+    "translation": "n. 洗手消毒液，免洗消毒液"
+  },
+  "paramedic": {
+    "translation": "n. 急救医疗人员，护理急救员"
+  },
+  "mindfulness": {
+    "translation": "n. 正念，静观（冥想）"
+  },
+  "therapist": {
+    "translation": "n. 心理治疗师"
+  },
+  "commute": {
+    "translation": "n. 通勤，上下班路程\nvi. 通勤，乘车上下班"
+  },
+  "hybrid": {
+    "translation": "n. 混合动力汽车"
+  },
+  "carpool": {
+    "translation": "vi. 拼车（轮流开车结伴上下班）"
+  },
+  "deliverable": {
+    "translation": "n. 交付成果，可交付物"
+  },
+  "raise": {
+    "translation": "n. 加薪，涨工资"
+  },
+  "lockdown": {
+    "translation": "n. 封城，封锁（为遏制疫情等而实施的管制措施）"
+  },
+  "pandemic": {
+    "translation": "n. 大流行病，全球性流行病"
+  },
+  "follower": {
+    "translation": "n. 粉丝，关注者（社交平台）"
+  },
+  "subscribe": {
+    "translation": "vi. 订阅（频道、服务等）"
+  },
+  "like": {
+    "translation": "n. 点赞（社交媒体的“喜欢”）"
+  },
+  "viral": {
+    "translation": "a. 病毒式传播的，爆红的（指网络内容）"
+  },
+  "thumbnail": {
+    "translation": "n. 缩略图，微缩图"
+  },
+  "subtitle": {
+    "translation": "n. 字幕（尤指电影、电视的）"
+  },
+  "feed": {
+    "translation": "n. 信息流，动态（社交平台）"
+  },
+  "thread": {
+    "translation": "n. （论坛、社交媒体的）帖子串，主题帖"
+  },
+  "sticker": {
+    "translation": "n. 贴纸；表情贴图"
+  },
+  "block": {
+    "translation": "vt. 屏蔽，拉黑（社交平台用户）"
+  },
+  "verified": {
+    "translation": "a. （社交账号）官方认证的，加V的"
+  },
+  "bio": {
+    "translation": "n. （社交媒体的）个人简介"
+  },
+  "profile": {
+    "translation": "n. 个人资料，简介（社交平台）"
+  },
+  "google": {
+    "translation": "v. 用谷歌搜索引擎搜索"
+  },
+  "firewall": {
+    "translation": "n. 防火墙（计算机安全系统）"
+  },
+  "cookie": {
+    "translation": "n. 缓存文件，Cookie（网站存储在浏览器中的数据）"
+  },
+  "gym": {
+    "translation": "n. 健身房"
+  },
+  "cool": {
+    "translation": "a. 酷的，时髦的"
+  },
+  "awesome": {
+    "translation": "a. 非常棒的，极好的"
+  },
+  "awkward": {
+    "translation": "a. 令人尴尬的，难为情的"
+  },
+  "app": {
+    "translation": "n. （智能手机的）应用程序，App"
+  },
+  "emoji": {
+    "translation": "n. 表情符号，绘文字"
+  },
+  "gif": {
+    "translation": "n. GIF 动图，动态图片\nabbr. 可交换的图像文件格式（Graphic Interchange Format）"
+  },
+  "tiktok": {
+    "translation": "n. 抖音，TikTok（短视频社交应用）"
+  },
+  "wechat": {
+    "translation": "n. 微信（腾讯公司推出的即时通讯软件）"
+  },
+  "weibo": {
+    "translation": "n. 微博"
+  },
+  "vlog": {
+    "translation": "n. 视频博客，视频日志（video log）"
+  },
+  "vlogger": {
+    "translation": "n. 视频博主"
+  },
+  "smartphone": {
+    "translation": "n. 智能手机"
+  },
+  "screenshot": {
+    "translation": "n. 屏幕截图，截屏"
+  },
+  "bluetooth": {
+    "translation": "n. 蓝牙（一种无线通信技术标准）"
+  },
+  "plugin": {
+    "translation": "n. 插件，插件程序"
+  },
+  "webinar": {
+    "translation": "n. 网络研讨会，在线研讨会"
+  },
+  "unsubscribe": {
+    "translation": "v. 取消订阅，退订"
+  },
+  "repost": {
+    "translation": "vt. 转发，转帖；重新发布"
+  },
+  "hashtag": {
+    "translation": "n. 话题标签，标签（# 标签）"
+  },
+  "cosplay": {
+    "translation": "n. 角色扮演，动漫真人秀（costume play）"
+  },
+  "otaku": {
+    "translation": "n. （日）御宅族，动漫迷（指热衷于动漫而足不出户的人）"
+  },
+  "esports": {
+    "translation": "n. 电子竞技"
+  },
+  "livestream": {
+    "translation": "v. 网络直播，实时直播"
+  },
+  "autoplay": {
+    "translation": "n. 自动播放"
+  },
+  "captcha": {
+    "translation": "n. 验证码"
+  },
+  "creator": {
+    "translation": "n. 创作者，内容创作者"
+  },
+  "uploader": {
+    "translation": "n. 上传者"
+  },
+  "baidu": {
+    "translation": "n. 百度（中文搜索引擎）"
+  },
+  "telehealth": {
+    "translation": "n. 远程医疗"
+  },
+  "cardio": {
+    "translation": "n. 有氧运动"
+  },
+  "matcha": {
+    "translation": "n. 抹茶"
+  },
+  "selfcare": {
+    "translation": "n. 自我关爱，自我照顾"
+  },
+  "streetwear": {
+    "translation": "n. 街头时尚服饰，休闲服饰"
+  },
+  "athleisure": {
+    "translation": "n. 运动休闲风（兼具运动与休闲风格的服饰）"
+  },
+  "crossbody": {
+    "translation": "adj. 斜挎的（指包袋）"
+  },
+  "smartwatch": {
+    "translation": "n. 智能手表"
+  },
+  "onboarding": {
+    "translation": "n. 入职培训，新员工引导；新用户引导流程"
+  },
+  "offboarding": {
+    "translation": "n. 离职流程，员工离职手续"
+  }
+}

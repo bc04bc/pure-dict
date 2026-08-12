@@ -290,6 +290,8 @@ class _EntryView extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 16),
+        _OnlineZhSection(word: entry.word),
+        const SizedBox(height: 16),
         _OnlineSection(word: entry.word),
       ],
     );
@@ -464,6 +466,80 @@ class _DefinitionSection extends ConsumerWidget {
     return _SectionCard(
       title: '英英释义',
       children: rows,
+    );
+  }
+}
+
+/// Chinese senses supplement fetched from Youdao, shown above the English
+/// online section. Hidden when offline or when the API returns nothing.
+class _OnlineZhSection extends ConsumerWidget {
+  const _OnlineZhSection({required this.word});
+
+  final String word;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final online = ref.watch(onlineZhLookupProvider(word));
+    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
+    return online.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (data) {
+        if (data == null) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.translate_rounded, size: 16, color: scheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  '在线中文释义',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            if (data.phonetics.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  for (final entry in data.phonetics.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${entry.key == 'uk' ? '英' : '美'} /${entry.value}/',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 10),
+            for (final sense in data.senses) ...[
+              if (data.senses.indexOf(sense) > 0)
+                const SizedBox(height: 12),
+              _PosGroup(pos: sense.pos, senses: sense.definitions),
+            ],
+          ],
+        );
+      },
     );
   }
 }

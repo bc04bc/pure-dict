@@ -33,6 +33,10 @@ python -c "import gzip,shutil; shutil.copyfileobj(gzip.open('assets/dict.sqlite.
 #    或者从 ECDICT 源码重新构建（需要 Python 3 + ecdict.csv）：
 #    https://github.com/skywind3000/ECDICT
 python tools/build_dict.py /path/to/ecdict.csv assets/dict.sqlite
+#    tools/patches.json 是人工维护的词库补丁（补充缺失词条与缺失的现代义项，
+#    如 anime 的"动漫"义、emoji/smartphone 等缺失词），构建时自动合并。
+#    可选：将 tools/definition_cn.tsv（AI 中文释义，词条多不提交仓库）
+#    放入 tools/ 目录即可一并合并。
 
 # 2. 构建 APK
 flutter pub get

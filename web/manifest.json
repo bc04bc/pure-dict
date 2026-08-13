@@ -1,11 +1,11 @@
 {
-    "name": "dict",
-    "short_name": "dict",
+    "name": "Pure Dict · 纯净词典",
+    "short_name": "Pure Dict",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#3D6BFF",
+    "description": "现代英汉/汉英离线词典：离线词库、多源发音、生词本与通知栏查词。",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

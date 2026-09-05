@@ -22,7 +22,9 @@ enum TtsMode {
 }
 
 class TtsService {
-  TtsService._();
+  TtsService._() {
+    _applyAudioContext();
+  }
 
   static final TtsService instance = TtsService._();
 
@@ -31,15 +33,46 @@ class TtsService {
   Directory? _dir;
   TtsMode _mode = TtsMode.edge;
   bool _cacheEnabled = true;
+  bool _audioDucking = true;
   Future<void>? _modeReady;
 
   static const _modeKey = 'tts_mode';
   static const _cacheKey = 'tts_cache_enabled';
+  static const _duckingKey = 'tts_audio_ducking';
   static const _voiceUs = 'en-US-JennyMultilingualNeural';
   static const _voiceUk = 'en-GB-SoniaNeural';
 
   TtsMode get mode => _mode;
   bool get cacheEnabled => _cacheEnabled;
+  bool get audioDucking => _audioDucking;
+
+  AudioContext _createAudioContext() {
+    return AudioContext(
+      android: AudioContextAndroid(
+        isSpeakerphoneOn: false,
+        stayAwake: false,
+        contentType: AndroidContentType.speech,
+        usageType: AndroidUsageType.media,
+        audioFocus: _audioDucking
+            ? AndroidAudioFocus.gainTransientMayDuck
+            : AndroidAudioFocus.gainTransient,
+      ),
+      iOS: AudioContextIOS(
+        category: AVAudioSessionCategory.playback,
+        options: _audioDucking
+            ? const {AVAudioSessionOptions.duckOthers}
+            : const {},
+      ),
+    );
+  }
+
+  Future<void> _applyAudioContext() async {
+    try {
+      final ctx = _createAudioContext();
+      await AudioPlayer.global.setAudioContext(ctx);
+      await _player.setAudioContext(ctx);
+    } catch (_) {}
+  }
 
   /// Waits until the persisted mode is loaded from storage.
   Future<void> get ready => _modeReady ??= _initMode();
@@ -52,6 +85,8 @@ class TtsService {
       orElse: () => TtsMode.edge,
     );
     _cacheEnabled = prefs.getBool(_cacheKey) ?? true;
+    _audioDucking = prefs.getBool(_duckingKey) ?? true;
+    await _applyAudioContext();
   }
 
   Future<void> setMode(TtsMode mode) async {
@@ -64,6 +99,13 @@ class TtsService {
     _cacheEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_cacheKey, enabled);
+  }
+
+  Future<void> setAudioDucking(bool enabled) async {
+    _audioDucking = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_duckingKey, enabled);
+    await _applyAudioContext();
   }
 
   /// Total size of the cached audio directory in bytes.
@@ -201,7 +243,7 @@ class TtsService {
       await _localTts.stop();
       await _localTts.setLanguage(accent == Accent.us ? 'en-US' : 'en-GB');
       await _localTts.setSpeechRate(0.45);
-      await _localTts.speak(text);
+      await _localTts.speak(text, focus: _audioDucking);
     } catch (_) {}
   }
 

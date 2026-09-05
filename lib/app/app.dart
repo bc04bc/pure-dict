@@ -27,6 +27,7 @@ class _DictAppState extends ConsumerState<DictApp> {
       ref.read(themeColorProvider.notifier).init();
       ref.read(defModeProvider.notifier).init();
       ref.read(ttsModeProvider.notifier).init();
+      ref.read(audioDuckingProvider.notifier).init();
       ref.read(quickLookupProvider.notifier).init();
     });
   }

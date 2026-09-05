@@ -54,6 +54,25 @@ class TtsModeNotifier extends StateNotifier<TtsMode> {
   }
 }
 
+final audioDuckingProvider =
+    StateNotifierProvider<AudioDuckingNotifier, bool>(
+  (_) => AudioDuckingNotifier(),
+);
+
+class AudioDuckingNotifier extends StateNotifier<bool> {
+  AudioDuckingNotifier() : super(TtsService.instance.audioDucking);
+
+  Future<void> init() async {
+    await TtsService.instance.ready;
+    state = TtsService.instance.audioDucking;
+  }
+
+  Future<void> set(bool enabled) async {
+    await TtsService.instance.setAudioDucking(enabled);
+    state = enabled;
+  }
+}
+
 class ThemeColorNotifier extends StateNotifier<AppThemeColor> {
   static const _key = 'theme_color';
 
@@ -273,6 +292,15 @@ class SettingsPage extends ConsumerWidget {
                         ),
                     ],
                   ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.volume_down_outlined),
+                  title: const Text('音乐避让'),
+                  subtitle: const Text('发音时降低背景音乐音量，不打断播放'),
+                  value: ref.watch(audioDuckingProvider),
+                  onChanged: (value) =>
+                      ref.read(audioDuckingProvider.notifier).set(value),
                 ),
               ],
             ),

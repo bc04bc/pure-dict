@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,31 +22,50 @@ class WordDetailPage extends ConsumerStatefulWidget {
 }
 
 class _WordDetailPageState extends ConsumerState<WordDetailPage> {
+  late String _word;
   late Future<_LookupResult> _entryFuture;
   bool _fav = false;
 
   @override
   void initState() {
     super.initState();
-    _entryFuture = _load();
+    _word = widget.word;
+    _entryFuture = _load(_word);
   }
 
-  Future<_LookupResult> _load() async {
+  Future<_LookupResult> _load(String word) async {
     final repo = await ref.read(dictRepositoryProvider.future);
     final user = await ref.read(userDataProvider.future);
-    await user.addHistory(widget.word);
-    final isFav = user.isFavorite(widget.word);
+    await user.addHistory(word);
+    final isFav = user.isFavorite(word);
     if (mounted) setState(() => _fav = isFav);
 
-    final entry = await repo.lookup(widget.word);
+    final entry = await repo.lookup(word);
     if (entry != null) return _LookupResult(entry: entry);
 
-    final isCjk = RegExp(r'[\u4e00-\u9fff]').hasMatch(widget.word);
+    final isCjk = RegExp(r'[\u4e00-\u9fff]').hasMatch(word);
     if (isCjk) {
-      final related = await repo.suggestions(widget.word, limit: 20);
+      final related = await repo.suggestions(word, limit: 20);
       if (related.isNotEmpty) return _LookupResult(related: related);
     }
     return const _LookupResult();
+  }
+
+  /// Opens the in-page re-lookup search. Picking a word (or submitting the
+  /// query) switches the current page to it in place, without leaving the
+  /// detail view or stacking routes.
+  Future<void> _startSearch() async {
+    final result = await showSearch<String>(
+      context: context,
+      delegate: _WordSearchDelegate(),
+    );
+    if (!mounted || result == null || result.isEmpty || result == _word) {
+      return;
+    }
+    setState(() {
+      _word = result;
+      _entryFuture = _load(result);
+    });
   }
 
   Future<void> _toggleFavorite(WordEntry entry) async {
@@ -68,7 +89,13 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: Text(_word, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          IconButton(
+            tooltip: '重新查词',
+            icon: const Icon(Icons.search_rounded),
+            onPressed: _startSearch,
+          ),
           IconButton(
             tooltip: '生词本',
             icon: Icon(_fav ? Icons.bookmark : Icons.bookmark_border),
@@ -90,9 +117,9 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
             return _EntryView(entry: result.entry!);
           }
           if (result.related.isNotEmpty) {
-            return _RelatedList(query: widget.word, related: result.related);
+            return _RelatedList(query: _word, related: result.related);
           }
-          return _NotFound(word: widget.word);
+          return _NotFound(word: _word);
         },
       ),
     );
@@ -104,6 +131,180 @@ class _LookupResult {
 
   final WordEntry? entry;
   final List<WordEntry> related;
+}
+
+/// Full-screen re-lookup search with live dictionary suggestions. Selecting a
+/// suggestion (or submitting the query) returns the chosen word to the detail
+/// page, which switches to it in place.
+class _WordSearchDelegate extends SearchDelegate<String> {
+  @override
+  String get searchFieldLabel => '输入英文或中文…';
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          tooltip: '清除',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => query = '',
+        ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      tooltip: '返回',
+      icon: const Icon(Icons.arrow_back_rounded),
+      onPressed: () => close(context, ''),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return _SearchSuggestions(
+      query: query,
+      onSelect: (word) => close(context, word),
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return _SearchSuggestions(
+      query: query,
+      onSelect: (word) => close(context, word),
+    );
+  }
+}
+
+/// Live suggestion list backing the re-lookup search. Debounced so typing
+/// feels responsive without hammering SQLite on every keystroke.
+class _SearchSuggestions extends ConsumerStatefulWidget {
+  const _SearchSuggestions({required this.query, required this.onSelect});
+
+  final String query;
+  final ValueChanged<String> onSelect;
+
+  @override
+  ConsumerState<_SearchSuggestions> createState() => _SearchSuggestionsState();
+}
+
+class _SearchSuggestionsState extends ConsumerState<_SearchSuggestions> {
+  Timer? _debounce;
+  List<WordEntry> _suggestions = const [];
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _run();
+  }
+
+  @override
+  void didUpdateWidget(_SearchSuggestions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query != widget.query) _run();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    _debounce?.cancel();
+    final query = widget.query.trim();
+    if (query.isEmpty) {
+      if (_searching || _suggestions.isNotEmpty) {
+        setState(() {
+          _searching = false;
+          _suggestions = const [];
+        });
+      }
+      return;
+    }
+    setState(() => _searching = true);
+    _debounce = Timer(const Duration(milliseconds: 250), () async {
+      final repo = await ref.read(dictRepositoryProvider.future);
+      final results = await repo.suggestions(query);
+      if (!mounted || widget.query.trim() != query) return;
+      setState(() {
+        _searching = false;
+        _suggestions = results;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final query = widget.query.trim();
+
+    if (query.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.tips_and_updates_outlined,
+              size: 40,
+              color: scheme.outlineVariant,
+            ),
+            const SizedBox(height: 12),
+            Text('输入英文或中文开始搜索', style: TextStyle(color: scheme.outline)),
+          ],
+        ),
+      );
+    }
+    if (_searching && _suggestions.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_suggestions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            '没有匹配的词，按键盘搜索键直接查询',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: scheme.outline),
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      itemCount: _suggestions.length,
+      separatorBuilder: (_, _) => const Divider(height: 1, indent: 16),
+      itemBuilder: (context, index) {
+        final entry = _suggestions[index];
+        final isChinese = RegExp(r'[\u4e00-\u9fff]').hasMatch(entry.word);
+        return ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          leading: Icon(
+            isChinese ? Icons.translate_rounded : Icons.menu_book_rounded,
+            color: scheme.primary,
+          ),
+          title: Text(
+            entry.word,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: entry.translation != null && entry.translation!.isNotEmpty
+              ? Text(
+                  _firstSense(entry.translation!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : null,
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => widget.onSelect(entry.word),
+        );
+      },
+    );
+  }
 }
 
 class _RelatedList extends ConsumerWidget {

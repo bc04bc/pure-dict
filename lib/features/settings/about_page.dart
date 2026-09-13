@@ -77,7 +77,7 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              'v1.0.3',
+              'v1.0.4.1',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),

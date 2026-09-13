@@ -26,11 +26,32 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
   late Future<_LookupResult> _entryFuture;
   bool _fav = false;
 
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  bool _isSearching = false;
+  List<WordEntry> _searchSuggestions = const [];
+  bool _searchingLoading = false;
+  Timer? _searchDebounce;
+
   @override
   void initState() {
     super.initState();
     _word = widget.word;
     _entryFuture = _load(_word);
+    _searchController.addListener(_onSearchInputChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.removeListener(_onSearchInputChanged);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchInputChanged() {
+    setState(() {});
   }
 
   Future<_LookupResult> _load(String word) async {
@@ -51,20 +72,57 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
     return const _LookupResult();
   }
 
-  /// Opens the in-page re-lookup search. Picking a word (or submitting the
-  /// query) switches the current page to it in place, without leaving the
-  /// detail view or stacking routes.
-  Future<void> _startSearch() async {
-    final result = await showSearch<String>(
-      context: context,
-      delegate: _WordSearchDelegate(),
-    );
-    if (!mounted || result == null || result.isEmpty || result == _word) {
+  void _openSearch() {
+    setState(() {
+      _isSearching = true;
+      _searchSuggestions = const [];
+      _searchingLoading = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() {
+      _isSearching = false;
+      _searchSuggestions = const [];
+      _searchingLoading = false;
+    });
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    final query = value.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _searchSuggestions = const [];
+        _searchingLoading = false;
+      });
       return;
     }
+    setState(() => _searchingLoading = true);
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () async {
+      final repo = await ref.read(dictRepositoryProvider.future);
+      final results = await repo.suggestions(query);
+      if (!mounted || _searchController.text.trim() != query) return;
+      setState(() {
+        _searchingLoading = false;
+        _searchSuggestions = results;
+      });
+    });
+  }
+
+  void _selectWord(String word) {
+    final target = word.trim();
+    _closeSearch();
+    if (target.isEmpty || target == _word) return;
     setState(() {
-      _word = result;
-      _entryFuture = _load(result);
+      _word = target;
+      _entryFuture = _load(target);
     });
   }
 
@@ -87,162 +145,275 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_word, maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            tooltip: '重新查词',
-            icon: const Icon(Icons.search_rounded),
-            onPressed: _startSearch,
+    final theme = Theme.of(context);
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
+    return PopScope(
+      canPop: !_isSearching,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isSearching) {
+          _closeSearch();
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // 1. 常规顶部栏与单词详情视图
+              Column(
+                children: [
+                  IgnorePointer(
+                    ignoring: _isSearching,
+                    child: AnimatedOpacity(
+                      opacity: _isSearching ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      child: SizedBox(
+                        height: 56,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Row(
+                            children: [
+                              if (canPop)
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back_rounded),
+                                  tooltip: _isSearching ? null : '返回上一页',
+                                  onPressed: () =>
+                                      Navigator.of(context).maybePop(),
+                                )
+                              else
+                                const SizedBox(width: 16),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  _word,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: '重新查词',
+                                icon: const Icon(Icons.search_rounded),
+                                onPressed: _openSearch,
+                              ),
+                              IconButton(
+                                tooltip: '生词本',
+                                icon: Icon(
+                                  _fav
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_border,
+                                ),
+                                onPressed: () async {
+                                  final result = await _entryFuture;
+                                  if (result.entry != null) {
+                                    _toggleFavorite(result.entry!);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.0, 0.02),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: KeyedSubtree(
+                        key: ValueKey(_word),
+                        child: FutureBuilder<_LookupResult>(
+                          future: _entryFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState !=
+                                ConnectionState.done) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            final result =
+                                snapshot.data ?? const _LookupResult();
+                            if (result.entry != null) {
+                              return _EntryView(entry: result.entry!);
+                            }
+                            if (result.related.isNotEmpty) {
+                              return _RelatedList(
+                                query: _word,
+                                related: result.related,
+                              );
+                            }
+                            return _NotFound(word: _word);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // 2. 原位联想词浮层，与主页同款平滑淡入淡出（240ms easeOut）
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !_isSearching,
+                  child: AnimatedOpacity(
+                    opacity: _isSearching ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOut,
+                    child: Material(
+                      color: theme.scaffoldBackgroundColor,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 76),
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTap: () {
+                                if (_searchController.text.trim().isEmpty) {
+                                  _closeSearch();
+                                }
+                              },
+                              child: _DetailSuggestionList(
+                                suggestions: _searchSuggestions,
+                                hasQuery:
+                                    _searchController.text.trim().isNotEmpty,
+                                isLoading: _searchingLoading,
+                                onTap: _selectWord,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. 悬浮搜索输入框：与主页完全一致的 340ms easeOutCubic 从屏幕上方平滑滑入
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 340),
+                curve: Curves.easeOutCubic,
+                top: _isSearching ? 10 : -72,
+                left: 20,
+                right: 20,
+                child: IgnorePointer(
+                  ignoring: !_isSearching,
+                  child: _DetailSearchField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchChanged,
+                    onSubmitted: (val) {
+                      final q = val.trim();
+                      if (q.isNotEmpty) _selectWord(q);
+                    },
+                    onClear: () {
+                      _searchController.clear();
+                      _onSearchChanged('');
+                    },
+                    onBack: _closeSearch,
+                    showClear:
+                        _isSearching && _searchController.text.isNotEmpty,
+                  ),
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: '生词本',
-            icon: Icon(_fav ? Icons.bookmark : Icons.bookmark_border),
-            onPressed: () async {
-              final result = await _entryFuture;
-              if (result.entry != null) _toggleFavorite(result.entry!);
-            },
-          ),
-        ],
-      ),
-      body: FutureBuilder<_LookupResult>(
-        future: _entryFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final result = snapshot.data ?? const _LookupResult();
-          if (result.entry != null) {
-            return _EntryView(entry: result.entry!);
-          }
-          if (result.related.isNotEmpty) {
-            return _RelatedList(query: _word, related: result.related);
-          }
-          return _NotFound(word: _word);
-        },
-      ),
-    );
-  }
-}
-
-class _LookupResult {
-  const _LookupResult({this.entry, this.related = const []});
-
-  final WordEntry? entry;
-  final List<WordEntry> related;
-}
-
-/// Full-screen re-lookup search with live dictionary suggestions. Selecting a
-/// suggestion (or submitting the query) returns the chosen word to the detail
-/// page, which switches to it in place.
-class _WordSearchDelegate extends SearchDelegate<String> {
-  @override
-  String get searchFieldLabel => '输入英文或中文…';
-
-  @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      if (query.isNotEmpty)
-        IconButton(
-          tooltip: '清除',
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () => query = '',
         ),
-    ];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(
-      tooltip: '返回',
-      icon: const Icon(Icons.arrow_back_rounded),
-      onPressed: () => close(context, ''),
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    return _SearchSuggestions(
-      query: query,
-      onSelect: (word) => close(context, word),
-    );
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    return _SearchSuggestions(
-      query: query,
-      onSelect: (word) => close(context, word),
+      ),
     );
   }
 }
 
-/// Live suggestion list backing the re-lookup search. Debounced so typing
-/// feels responsive without hammering SQLite on every keystroke.
-class _SearchSuggestions extends ConsumerStatefulWidget {
-  const _SearchSuggestions({required this.query, required this.onSelect});
+class _DetailSearchField extends StatelessWidget {
+  const _DetailSearchField({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onSubmitted,
+    required this.onClear,
+    required this.onBack,
+    required this.showClear,
+  });
 
-  final String query;
-  final ValueChanged<String> onSelect;
-
-  @override
-  ConsumerState<_SearchSuggestions> createState() => _SearchSuggestionsState();
-}
-
-class _SearchSuggestionsState extends ConsumerState<_SearchSuggestions> {
-  Timer? _debounce;
-  List<WordEntry> _suggestions = const [];
-  bool _searching = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _run();
-  }
-
-  @override
-  void didUpdateWidget(_SearchSuggestions oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.query != widget.query) _run();
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _run() async {
-    _debounce?.cancel();
-    final query = widget.query.trim();
-    if (query.isEmpty) {
-      if (_searching || _suggestions.isNotEmpty) {
-        setState(() {
-          _searching = false;
-          _suggestions = const [];
-        });
-      }
-      return;
-    }
-    setState(() => _searching = true);
-    _debounce = Timer(const Duration(milliseconds: 250), () async {
-      final repo = await ref.read(dictRepositoryProvider.future);
-      final results = await repo.suggestions(query);
-      if (!mounted || widget.query.trim() != query) return;
-      setState(() {
-        _searching = false;
-        _suggestions = results;
-      });
-    });
-  }
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onClear;
+  final VoidCallback onBack;
+  final bool showClear;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final query = widget.query.trim();
+    return Material(
+      elevation: 3,
+      shadowColor: scheme.shadow.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(24),
+      color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        onSubmitted: onSubmitted,
+        style: Theme.of(context).textTheme.bodyLarge,
+        decoration: InputDecoration(
+          hintText: '输入英文或中文…',
+          hintStyle: TextStyle(
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+          filled: false,
+          prefixIcon: IconButton(
+            tooltip: '返回',
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: onBack,
+          ),
+          suffixIcon: showClear
+              ? IconButton(
+                  tooltip: '清除',
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: onClear,
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+}
 
-    if (query.isEmpty) {
+class _DetailSuggestionList extends StatelessWidget {
+  const _DetailSuggestionList({
+    required this.suggestions,
+    required this.hasQuery,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  final List<WordEntry> suggestions;
+  final bool hasQuery;
+  final bool isLoading;
+  final void Function(String) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (suggestions.isEmpty && !hasQuery) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -253,20 +424,23 @@ class _SearchSuggestionsState extends ConsumerState<_SearchSuggestions> {
               color: scheme.outlineVariant,
             ),
             const SizedBox(height: 12),
-            Text('输入英文或中文开始搜索', style: TextStyle(color: scheme.outline)),
+            Text(
+              '输入英文或中文开始搜索',
+              style: TextStyle(color: scheme.outline),
+            ),
           ],
         ),
       );
     }
-    if (_searching && _suggestions.isEmpty) {
+    if (isLoading && suggestions.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_suggestions.isEmpty) {
+    if (suggestions.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            '没有匹配的词，按键盘搜索键直接查询',
+            '没有匹配的词',
             textAlign: TextAlign.center,
             style: TextStyle(color: scheme.outline),
           ),
@@ -275,10 +449,10 @@ class _SearchSuggestionsState extends ConsumerState<_SearchSuggestions> {
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      itemCount: _suggestions.length,
+      itemCount: suggestions.length,
       separatorBuilder: (_, _) => const Divider(height: 1, indent: 16),
       itemBuilder: (context, index) {
-        final entry = _suggestions[index];
+        final entry = suggestions[index];
         final isChinese = RegExp(r'[\u4e00-\u9fff]').hasMatch(entry.word);
         return ListTile(
           shape: RoundedRectangleBorder(
@@ -292,7 +466,8 @@ class _SearchSuggestionsState extends ConsumerState<_SearchSuggestions> {
             entry.word,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          subtitle: entry.translation != null && entry.translation!.isNotEmpty
+          subtitle: entry.translation != null &&
+                  entry.translation!.isNotEmpty
               ? Text(
                   _firstSense(entry.translation!),
                   maxLines: 1,
@@ -300,11 +475,19 @@ class _SearchSuggestionsState extends ConsumerState<_SearchSuggestions> {
                 )
               : null,
           trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () => widget.onSelect(entry.word),
+          onTap: () => onTap(entry.word),
         );
       },
     );
   }
+}
+
+
+class _LookupResult {
+  const _LookupResult({this.entry, this.related = const []});
+
+  final WordEntry? entry;
+  final List<WordEntry> related;
 }
 
 class _RelatedList extends ConsumerWidget {

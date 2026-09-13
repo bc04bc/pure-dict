@@ -26,9 +26,7 @@ android {
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
-        // 1.0.4.1 release: four-segment name is not valid in pubspec's
-        // x.y.z+build format, so the name is pinned here while the code
-        // (5) comes from pubspec.yaml.
+        // 1.0.4.1 release (with dark/light adaptive app icons)
         versionName = "1.0.4.1"
     }
 

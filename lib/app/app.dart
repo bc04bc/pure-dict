@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/db/user_data.dart';
+import '../core/sync/webdav_sync_service.dart';
 import '../core/text/lookup_text.dart';
 import '../features/settings/settings_page.dart';
 import 'router.dart';
@@ -29,7 +31,25 @@ class _DictAppState extends ConsumerState<DictApp> {
       ref.read(ttsModeProvider.notifier).init();
       ref.read(audioDuckingProvider.notifier).init();
       ref.read(quickLookupProvider.notifier).init();
+      _triggerAutoSyncIfEnabled();
     });
+  }
+
+  Future<void> _triggerAutoSyncIfEnabled() async {
+    try {
+      final syncService = await ref.read(webDavSyncServiceProvider.future);
+      final config = syncService.getConfig();
+      if (config.isConfigured && config.autoSyncOnLaunch) {
+        final result = await syncService.sync();
+        if (result.success && result.downloadedCount > 0 && mounted) {
+          final user = await ref.read(userDataProvider.future);
+          await user.reloadCaches();
+          ref.invalidate(userDataProvider);
+        }
+      }
+    } catch (_) {
+      // Silent background sync failure should not interrupt app launch
+    }
   }
 
   @override

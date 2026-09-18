@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dict/core/db/dict_repository.dart';
 import 'package:dict/core/db/user_data.dart';
+import 'package:dict/core/models/study_entry.dart';
 import 'package:dict/core/models/word_entry.dart';
 import 'package:dict/core/network/online_dict.dart';
 import 'package:dict/features/word/word_detail_page.dart';
@@ -12,7 +13,13 @@ import 'package:dict/features/word/word_detail_page.dart';
 /// enough to exercise the re-lookup search flow without a real SQLite db.
 class FakeDictRepository implements DictRepository {
   static const _entries = [
-    WordEntry(word: 'apple', phonetic: 'ˈæpl', translation: 'n. 苹果'),
+    WordEntry(
+      word: 'apple',
+      phonetic: 'ˈæpl',
+      translation: 'n. 苹果',
+      exchange: 's:apples',
+    ),
+    WordEntry(word: 'apples', phonetic: 'ˈæplz', translation: 'n. 苹果 (复数)'),
     WordEntry(word: 'banana', phonetic: 'bəˈnɑːnə', translation: 'n. 香蕉'),
     WordEntry(word: 'band', phonetic: 'bænd', translation: 'n. 乐队'),
   ];
@@ -46,9 +53,51 @@ class FakeUserData implements UserData {
   List<String> get favorites => List.unmodifiable(_favorites);
 
   @override
-  Future<void> addHistory(String word) async {
+  bool get studyEnabled => true;
+
+  @override
+  int get dailyReviewQuota => 20;
+
+  @override
+  Future<void> setStudyEnabled(bool enabled) async {}
+
+  @override
+  Future<void> setDailyReviewQuota(int quota) async {}
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> reloadCaches() async {}
+
+  @override
+  Future<void> recordStudyQuery(String word, {int? now}) async {
+    _favorites.add(word);
+  }
+
+  @override
+  Future<void> removeFromStudy(String word) async {
+    _favorites.remove(word);
+  }
+
+  @override
+  Future<UserWordEntry?> getUserWord(String word) async => null;
+
+  @override
+  Future<List<UserWordEntry>> getActiveStudyEntries() async => [];
+
+  @override
+  Future<void> saveUserWord(UserWordEntry entry) async {}
+
+  final List<String> capturedStudyWords = [];
+
+  @override
+  Future<void> addHistory(String word, {bool captureStudy = true}) async {
     _history.remove(word);
     _history.insert(0, word);
+    if (captureStudy) {
+      capturedStudyWords.add(word);
+    }
   }
 
   @override
@@ -156,4 +205,47 @@ void main() {
     expect(find.text('apple'), findsWidgets);
     expect(find.text('banana'), findsNothing);
   });
+
+  testWidgets(
+    'clicking exchange chip jumps to the target word and back button returns without capturing to study',
+    (tester) async {
+      final fakeUser = FakeUserData();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dictRepositoryProvider
+                .overrideWith((ref) async => FakeDictRepository()),
+            userDataProvider.overrideWith((ref) async => fakeUser),
+            onlineLookupProvider.overrideWith((ref, word) async => null),
+            onlineZhLookupProvider.overrideWith((ref, word) async => null),
+          ],
+          child: const MaterialApp(home: WordDetailPage(word: 'apple')),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Initial query captures apple
+      expect(fakeUser.capturedStudyWords, contains('apple'));
+
+      expect(find.text('复数 · apples'), findsOneWidget);
+
+      await tester.tap(find.text('复数 · apples'));
+      await tester.pumpAndSettle();
+
+      // Successfully switched to apples
+      expect(find.text('apples'), findsWidgets);
+      expect(find.text('苹果 (复数)'), findsWidgets);
+
+      // Exchange chip word 'apples' must NOT be captured into study library
+      expect(fakeUser.capturedStudyWords, isNot(contains('apples')));
+
+      // Tap back button
+      await tester.tap(find.byTooltip('返回上一页'));
+      await tester.pumpAndSettle();
+
+      // Returned to apple
+      expect(find.text('apple'), findsWidgets);
+      expect(find.text('苹果'), findsWidgets);
+    },
+  );
 }

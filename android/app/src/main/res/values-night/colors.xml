@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#1C1F2E</color>
+
+    <!-- Dialog Colors (Dark Mode) -->
+    <color name="dialog_card_bg">#1F1C16</color>
+    <color name="dialog_card_stroke">#383226</color>
+    <color name="dialog_text_primary">#F5F0E6</color>
+    <color name="dialog_text_secondary">#C8C0B2</color>
+    <color name="dialog_text_hint">#968E7F</color>
+    <color name="dialog_accent">#ECC16F</color>
+    <color name="dialog_accent_container">#382E19</color>
+    <color name="dialog_tag_bg">#342D21</color>
+    <color name="dialog_tag_text">#D9CDBC</color>
+    <color name="dialog_btn_secondary_bg">#302A1F</color>
+    <color name="dialog_btn_secondary_text">#DFD5C5</color>
+    <color name="dialog_btn_primary_bg">#D4A545</color>
+    <color name="dialog_btn_primary_text">#231B00</color>
 </resources>

@@ -26,8 +26,7 @@ android {
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
-        // 1.0.4.1 release (with dark/light adaptive app icons)
-        versionName = "1.0.4.1"
+        versionName = flutter.versionName
     }
 
     buildTypes {

@@ -26,9 +26,45 @@ class HistoryPage extends ConsumerWidget {
               tooltip: '清空',
               icon: const Icon(Icons.delete_sweep_outlined),
               onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('清空浏览历史'),
+                    content: const Text('确定要清空所有浏览记录吗？此操作不可撤销。'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('取消'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(ctx).colorScheme.error,
+                          foregroundColor:
+                              Theme.of(ctx).colorScheme.onError,
+                        ),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('清空'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+
                 final user = await ref.read(userDataProvider.future);
                 await user.clearHistory();
                 ref.invalidate(historyProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: Text('已清空浏览历史'),
+                        duration: Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                }
               },
             ),
         ],

@@ -343,6 +343,64 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          _SectionLabel('背单词'),
+          Card(
+            child: Consumer(
+              builder: (context, ref, _) {
+                final userAsync = ref.watch(userDataProvider);
+                return userAsync.when(
+                  loading: () => const SizedBox(height: 56),
+                  error: (_, _) => const SizedBox.shrink(),
+                  data: (user) {
+                    final studyEnabled = user.studyEnabled;
+                    final quota = user.dailyReviewQuota;
+                    return Column(
+                      children: [
+                        SwitchListTile(
+                          secondary: const Icon(Icons.psychology_outlined),
+                          title: const Text('背单词模式'),
+                          subtitle: const Text('查词自动纳入生词库，按查词频次与遗忘曲线规划每日复习'),
+                          value: studyEnabled,
+                          onChanged: (value) async {
+                            await user.setStudyEnabled(value);
+                            ref.invalidate(userDataProvider);
+                          },
+                        ),
+                        if (studyEnabled) ...[
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(Icons.tune_rounded),
+                            title: const Text('每日复习上限'),
+                            subtitle: Text(quota == 0
+                                ? '当前设定：不限制每日复习量'
+                                : '当前设定：每日最多复习 $quota 个单词'),
+                            trailing: DropdownButton<int>(
+                              value: quota,
+                              underline: const SizedBox.shrink(),
+                              items: const [
+                                DropdownMenuItem(value: 10, child: Text('10 词')),
+                                DropdownMenuItem(value: 20, child: Text('20 词')),
+                                DropdownMenuItem(value: 30, child: Text('30 词')),
+                                DropdownMenuItem(value: 50, child: Text('50 词')),
+                                DropdownMenuItem(value: 0, child: Text('不限')),
+                              ],
+                              onChanged: (val) async {
+                                if (val != null) {
+                                  await user.setDailyReviewQuota(val);
+                                  ref.invalidate(userDataProvider);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionLabel('快捷查词'),
           Card(
             child: Column(
@@ -367,11 +425,45 @@ class SettingsPage extends ConsumerWidget {
             child: Column(
               children: [
                 ListTile(
+                  leading: const Icon(Icons.cloud_sync_outlined),
+                  title: const Text('WebDAV 同步与备份'),
+                  subtitle: const Text('多设备增量同步与数据备份恢复'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/webdav'),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.delete_sweep_outlined),
                   title: const Text('清除浏览历史'),
                   subtitle: const Text('删除所有查询记录'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('清除浏览历史'),
+                        content: const Text('确定要清除所有查词历史记录吗？此操作不可撤销。'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('取消'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(ctx).colorScheme.error,
+                              foregroundColor:
+                                  Theme.of(ctx).colorScheme.onError,
+                            ),
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('清除'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed != true) return;
+
                     final user = await ref.read(userDataProvider.future);
                     await user.clearHistory();
                     ref.invalidate(historyProvider);
@@ -380,7 +472,7 @@ class SettingsPage extends ConsumerWidget {
                         ..hideCurrentSnackBar()
                         ..showSnackBar(
                           const SnackBar(
-                            content: Text('已清除'),
+                            content: Text('已清除历史记录'),
                             duration: Duration(seconds: 1),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -390,10 +482,38 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.delete_outlined),
-                  title: const Text('清空生词本'),
-                  subtitle: const Text('删除所有收藏的词'),
+                  title: const Text('清空生词库'),
+                  subtitle: const Text('删除所有纳入学习的词汇记录'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('清空生词库'),
+                        content: const Text(
+                          '确定要清空生词库吗？\n这将移除所有已记录的生词及当前记忆曲线复习进度，此操作不可撤销。',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('取消'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(ctx).colorScheme.error,
+                              foregroundColor:
+                                  Theme.of(ctx).colorScheme.onError,
+                            ),
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('清空'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed != true) return;
+
                     final user = await ref.read(userDataProvider.future);
                     await user.clearFavorites();
                     ref.invalidate(favoritesProvider);
@@ -402,7 +522,7 @@ class SettingsPage extends ConsumerWidget {
                         ..hideCurrentSnackBar()
                         ..showSnackBar(
                           const SnackBar(
-                            content: Text('已清空'),
+                            content: Text('已清空生词库'),
                             duration: Duration(seconds: 1),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -447,7 +567,7 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: 32),
           Center(
             child: Text(
-              '词典 v1.0.3\n数据来源：ECDICT 开源词库',
+              '词典 v1.1.0\n数据来源：ECDICT 开源词库',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),

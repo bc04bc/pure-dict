@@ -24,7 +24,6 @@ class WordDetailPage extends ConsumerStatefulWidget {
 class _WordDetailPageState extends ConsumerState<WordDetailPage> {
   late String _word;
   late Future<_LookupResult> _entryFuture;
-  bool _fav = false;
 
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
@@ -54,12 +53,10 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
     setState(() {});
   }
 
-  Future<_LookupResult> _load(String word) async {
+  Future<_LookupResult> _load(String word, {bool captureStudy = true}) async {
     final repo = await ref.read(dictRepositoryProvider.future);
     final user = await ref.read(userDataProvider.future);
-    await user.addHistory(word);
-    final isFav = user.isFavorite(word);
-    if (mounted) setState(() => _fav = isFav);
+    await user.addHistory(word, captureStudy: captureStudy);
 
     final entry = await repo.lookup(word);
     if (entry != null) return _LookupResult(entry: entry);
@@ -116,32 +113,32 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
     });
   }
 
-  void _selectWord(String word) {
+  final List<String> _wordHistory = [];
+
+  void _selectWord(String word, {bool captureStudy = true}) {
     final target = word.trim();
     _closeSearch();
     if (target.isEmpty || target == _word) return;
+    _wordHistory.add(_word);
     setState(() {
       _word = target;
-      _entryFuture = _load(target);
+      _entryFuture = _load(target, captureStudy: captureStudy);
     });
   }
 
-  Future<void> _toggleFavorite(WordEntry entry) async {
-    final user = await ref.read(userDataProvider.future);
-    final added = await user.toggleFavorite(entry.word);
-    if (!mounted) return;
-    setState(() => _fav = added);
-    ref.invalidate(favoritesProvider);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(added ? '已加入生词本' : '已移出生词本'),
-          duration: const Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  void _navigateBack() {
+    if (_wordHistory.isNotEmpty) {
+      final prev = _wordHistory.removeLast();
+      setState(() {
+        _word = prev;
+        _entryFuture = _load(prev, captureStudy: false);
+      });
+    } else {
+      Navigator.of(context).maybePop();
+    }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -149,10 +146,19 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
     final canPop = ModalRoute.of(context)?.canPop ?? false;
 
     return PopScope(
-      canPop: !_isSearching,
+      canPop: !_isSearching && _wordHistory.isEmpty,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _isSearching) {
+        if (didPop) return;
+        if (_isSearching) {
           _closeSearch();
+          return;
+        }
+        if (_wordHistory.isNotEmpty) {
+          final prev = _wordHistory.removeLast();
+          setState(() {
+            _word = prev;
+            _entryFuture = _load(prev, captureStudy: false);
+          });
         }
       },
       child: Scaffold(
@@ -174,12 +180,11 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: Row(
                             children: [
-                              if (canPop)
+                              if (canPop || _wordHistory.isNotEmpty)
                                 IconButton(
                                   icon: const Icon(Icons.arrow_back_rounded),
                                   tooltip: _isSearching ? null : '返回上一页',
-                                  onPressed: () =>
-                                      Navigator.of(context).maybePop(),
+                                  onPressed: _navigateBack,
                                 )
                               else
                                 const SizedBox(width: 16),
@@ -198,20 +203,6 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
                                 tooltip: '重新查词',
                                 icon: const Icon(Icons.search_rounded),
                                 onPressed: _openSearch,
-                              ),
-                              IconButton(
-                                tooltip: '生词本',
-                                icon: Icon(
-                                  _fav
-                                      ? Icons.bookmark
-                                      : Icons.bookmark_border,
-                                ),
-                                onPressed: () async {
-                                  final result = await _entryFuture;
-                                  if (result.entry != null) {
-                                    _toggleFavorite(result.entry!);
-                                  }
-                                },
                               ),
                             ],
                           ),
@@ -250,7 +241,12 @@ class _WordDetailPageState extends ConsumerState<WordDetailPage> {
                             final result =
                                 snapshot.data ?? const _LookupResult();
                             if (result.entry != null) {
-                              return _EntryView(entry: result.entry!);
+                              return _EntryView(
+                                entry: result.entry!,
+                                onSelectWord: _selectWord,
+                                onSelectExchangeWord: (w) =>
+                                    _selectWord(w, captureStudy: false),
+                              );
                             }
                             if (result.related.isNotEmpty) {
                               return _RelatedList(
@@ -597,9 +593,15 @@ class _NotFound extends StatelessWidget {
 }
 
 class _EntryView extends ConsumerWidget {
-  const _EntryView({required this.entry});
+  const _EntryView({
+    required this.entry,
+    required this.onSelectWord,
+    this.onSelectExchangeWord,
+  });
 
   final WordEntry entry;
+  final ValueChanged<String> onSelectWord;
+  final ValueChanged<String>? onSelectExchangeWord;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -656,16 +658,31 @@ class _EntryView extends ConsumerWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: parseExchange(entry.exchange!)
+                    .where((e) => e.$2.trim().isNotEmpty)
                     .map(
-                      (e) => Chip(
+                      (e) => ActionChip(
+                        avatar: Icon(
+                          Icons.arrow_outward_rounded,
+                          size: 14,
+                          color: scheme.primary,
+                        ),
                         label: Text(
                           '${e.$1} · ${e.$2}'.replaceAll("'", '’'),
-                          style: theme.textTheme.bodySmall,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        side: BorderSide.none,
-                        backgroundColor: scheme.surfaceContainerHighest,
-                        padding: EdgeInsets.zero,
+                        side: BorderSide(
+                          color: scheme.outlineVariant.withValues(alpha: 0.55),
+                          width: 0.8,
+                        ),
+                        backgroundColor:
+                            scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         visualDensity: VisualDensity.compact,
+                        onPressed: () =>
+                            (onSelectExchangeWord ?? onSelectWord)(e.$2.trim()),
                       ),
                     )
                     .toList(),

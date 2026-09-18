@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('词典'), findsOneWidget);
-    expect(find.text('生词本'), findsOneWidget);
+    expect(find.text('背单词'), findsOneWidget);
     expect(find.text('历史'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('今日一词'), findsOneWidget);

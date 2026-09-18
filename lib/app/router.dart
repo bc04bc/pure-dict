@@ -6,6 +6,7 @@ import '../features/history/history_page.dart';
 import '../features/home/home_page.dart';
 import '../features/settings/about_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/settings/webdav_settings_page.dart';
 import '../features/word/word_detail_page.dart';
 import '../features/wordbook/wordbook_page.dart';
 
@@ -62,6 +63,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: AboutPage(),
         ),
       ),
+      GoRoute(
+        path: '/webdav',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(
+          child: WebDavSettingsPage(),
+        ),
+      ),
     ],
   );
 });
@@ -88,9 +96,9 @@ class _AppShell extends StatelessWidget {
             label: '查词',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bookmark_border_outlined),
-            selectedIcon: Icon(Icons.bookmark),
-            label: '生词本',
+            icon: Icon(Icons.school_outlined),
+            selectedIcon: Icon(Icons.school),
+            label: '背单词',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
